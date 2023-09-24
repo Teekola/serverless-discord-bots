@@ -1,9 +1,18 @@
-# Node.js Hello World
-
-Simple Node.js + Vercel example that returns a "Hello World" response.
-
-## How to Use
-
-You can choose from one of the following two methods to use this repository:
+# Serverless API endpoints for discord bots
 
 
+## Running the application
+
+Install the dependencies:
+```
+npm install
+```
+
+Install the Vercel CLI:
+```
+npm i -g vercel
+```
+Then run the app at the root of the repository:
+```
+vercel dev
+```
