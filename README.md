@@ -6,4 +6,4 @@ Simple Node.js + Vercel example that returns a "Hello World" response.
 
 You can choose from one of the following two methods to use this repository:
 
-### One-Click Deploy
+
