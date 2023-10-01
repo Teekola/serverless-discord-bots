@@ -44,13 +44,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { courses, createdAt, email, name, totalPrice } = parsedBody;
 
     const coursesString = courses
-      .map((course) => course.name + " " + priceFormatter.format(course.price))
+      .map(
+        (course) =>
+          course.name + " " + priceFormatter.format(course.price) + " €"
+      )
       .join(",");
 
     let message = `**Uusi tilaus!**
     **Tilausaika:** ${dateFormatter.format(new Date(createdAt))} 
     **Tilatut kurssit:** ${coursesString}
-    **Kokonaissumma:** ${priceFormatter.format(totalPrice)} 
+    **Kokonaissumma:** ${priceFormatter.format(totalPrice)} € 
     **Tilaaja:** ${name}
     **Email:** ${email}
     `;
