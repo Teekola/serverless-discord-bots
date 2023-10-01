@@ -23,7 +23,7 @@ const bodySchema = z.object({
       price: z.number(),
     })
   ),
-  createdAt: z.date(),
+  createdAt: z.string(),
   email: z.string(),
   name: z.string(),
   totalPrice: z.number(),
@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .join(",");
 
     let message = `**Uusi tilaus!**
-    **Tilausaika:** ${dateFormatter.format(createdAt)} 
+    **Tilausaika:** ${dateFormatter.format(new Date(createdAt))} 
     **Tilatut kurssit:** ${coursesString}
     **Kokonaissumma:** ${priceFormatter.format(totalPrice)} 
     **Tilaaja:** ${name}
