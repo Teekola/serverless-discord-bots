@@ -1,63 +1,120 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { discordClient } from "../lib/discord";
+import { prisma } from "../prisma/prisma";
+
+const membershipId = "63989b8bb528e0e359c1515c"; // sunsu yearly membership productId
+const deactivationWebhook =
+  "https://checkout.kajabi.com/webhooks/offers/9Vzzdv5M8JZxpSt5/2148528871/deactivate"; // kajabi deactivation webhook url
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const currentDate = new Date();
+  const startDate = new Date();
+  startDate.setFullYear(startDate.getFullYear() - 1);
+  startDate.setDate(startDate.getDate() - 1);
+  startDate.setHours(0, 0, 0, 0);
+
+  const endDate = new Date(startDate);
+  endDate.setHours(23, 59, 59, 999);
   // Get date that is exactly one year and one day before current year month day date
 
+  const timeRangeStr = `${startDate.toLocaleString("fi-FI", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  })} - ${endDate.toLocaleString("fi-FI", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  })}`;
+
+  const membershipIds = await prisma.orderProduct.findMany({
+    select: { id: true },
+    where: {
+      product: {
+        productId: membershipId,
+      },
+    },
+  });
+
   // Find sunsu-vuosijäsenyys orders that were made on that date
-
-  // Call Kajabi deactivation webhook for all such orders using the customer emails
-  // and the deactivation webhook for sunsu-vuosijäsenyys
-
-  const deactivationWebhook =
-    "https://checkout.kajabi.com/webhooks/offers/9Vzzdv5M8JZxpSt5/2148528871/deactivate";
+  const orders = await prisma.order.findMany({
+    select: {
+      customer: {
+        select: { email: true, firstName: true, lastName: true },
+      },
+    },
+    where: {
+      createdAt: {
+        gte: startDate,
+        lte: endDate,
+      },
+      status: "COMPLETED",
+      productIds: {
+        hasSome: membershipIds.map((obj) => obj.id),
+      },
+    },
+  });
+  const kajabiPayloads = orders.map((order) => ({
+    name: order.customer.firstName + " " + order.customer.lastName,
+    email: order.customer.email,
+    external_user_id: order.customer.email,
+  }));
 
   const deactivationPromises: Promise<unknown>[] = [];
-  const customerEmails: string[] = [];
 
-  // Here we need to loop through all the customers
-  const kajabiPayload = {
-    name: "Teemu Testaaja",
-    email: "teemu.testaaja@testaamo.fi",
-    external_user_id: "teemu.testaaja@testaamo.fi",
-  };
-
-  customerEmails.push("teemu.testaaja@testaamo.fi");
-
-  const deactivationPromise = fetch(deactivationWebhook, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(kajabiPayload),
-  });
-  deactivationPromises.push(deactivationPromise);
+  for (const kajabiPayload of kajabiPayloads) {
+    const deactivationPromise = fetch(deactivationWebhook, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(kajabiPayload),
+    });
+    deactivationPromises.push(deactivationPromise);
+  }
 
   // This maintains the promise array's order
   const results = await Promise.allSettled(deactivationPromises);
 
   // Create an array of rejected emails and reasons why they were rejected
-  const failedDeactivations = results.reduce(
-    (rejectedResults, result, index) => {
+  const [successfulDeactivations, failedDeactivations] = results.reduce(
+    (acc, result, index) => {
       if (result.status === "rejected") {
         return [
-          ...rejectedResults,
-          `Rejected: ${customerEmails[index]}. Reason: ${result.reason}`,
+          [...acc[0]],
+          [
+            ...acc[1],
+            `Rejected: ${kajabiPayloads[index].email}. Reason: ${result.reason}`,
+          ],
         ];
       }
-      return rejectedResults;
+      return [[...acc[0], kajabiPayloads[index].email], [...acc[1]]];
     },
-    [] as string[]
+    [[], []] as [string[], string[]]
   );
 
   // If any promise is rejected, include that in the Discord message as well!
+  const successfulDeactivationsString = successfulDeactivations.join("\n");
   const failedDeactivationsString = failedDeactivations.join("\n");
 
-  // TODO: Include all wanted information to the message
-  const message = "Testiviesti";
+  const message = `
+  **Deaktivoitu aikavälillä ${timeRangeStr} alkaneet jäsenyydet:**
+${
+  successfulDeactivations.length > 0
+    ? `*Deaktivoidut jäsenyydet (${successfulDeactivations.length} kpl)*: 
+${successfulDeactivationsString}`
+    : "Ei deaktivoitavia jäsenyyksiä."
+}
+${
+  failedDeactivations.length > 0
+    ? `*Epäonnistuneet deaktivoinnit (${failedDeactivations.length} kpl)*: 
+${failedDeactivationsString}`
+    : ""
+}`;
 
-  console.log(process.env.DISCORD_CHANNEL_ID_SUNSU_DEACTIVATION);
-
-  /*
   discordClient.on("ready", async () => {
     const channel = discordClient.channels.cache.get(
       process.env.DISCORD_CHANNEL_ID_SUNSU_DEACTIVATION as string
@@ -67,12 +124,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await channel.send(message);
     }
   });
-  */
+
   // Triggering login causes the message the be sent
   await discordClient.login(process.env.DISCORD_BOT_TOKEN_SUNSU);
 
   // Send a message to discord server such that all deactivated emails are shown there
   // with the date for which they were deactivated for.
   // Send the message even if there are no orders!
-  return res.status(200).end("Hello Cron!");
+  return res.status(200).json({ message });
 }

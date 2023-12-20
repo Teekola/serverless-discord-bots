@@ -1,0 +1,170 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/mainClient"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("SUNSU_DATABASE_URL")
+}
+
+model Product {
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  name            String           @unique
+  type            ProductType      @default(COURSE)
+  originalPrice   Int
+  alv             Int?             @default(24)
+  imageUrl        String
+  activationUrl   String?
+  ProductVariant  ProductVariant[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  discountCodes   DiscountCode[]   @relation(fields: [discountCodeIds], references: [id])
+  discountCodeIds String[]         @db.ObjectId
+}
+
+model ProductVariant {
+  id                String         @id @default(auto()) @map("_id") @db.ObjectId
+  variantName       String
+  name              String
+  type              ProductType
+  originalPrice     Int
+  price             Int
+  alv               Int?           @default(24)
+  imageUrl          String
+  activationUrl     String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  product           Product        @relation(fields: [productId], references: [id])
+  productId         String         @db.ObjectId
+  orderProducts     OrderProduct[]
+  relatedAddOnSales AddOnSale[]    @relation("RelatedAddOnSales")
+  orderbumps        AddOnSale[]    @relation("Orderbumps", fields: [orderbumpIds], references: [id])
+  orderbumpIds      String[]       @db.ObjectId
+  preupsell         AddOnSale?     @relation("Preupsell", fields: [preupsellId], references: [id])
+  preupsellId       String?        @db.ObjectId
+  postupsell        AddOnSale?     @relation("Postupsell", fields: [postupsellId], references: [id])
+  postupsellId      String?        @db.ObjectId
+
+  @@unique([productId, variantName])
+}
+
+enum ProductType {
+  COURSE
+  EXERCISE_COURSE
+  MEMBERSHIP
+  EXERCISE_MEMBERSHIP
+  EBOOK
+  OTHER
+}
+
+model AddOnSale {
+  id                              String           @id @default(auto()) @map("_id") @db.ObjectId
+  name                            String
+  boxTitle                        String
+  boxHtml                         String
+  boxImageUrl                     String?
+  boxVideoEmbedHtml               String?
+  modalTitle                      String
+  modalHtml                       String
+  modalImageUrl                   String?
+  modalVideoEmbedHtml             String?
+  productVariant                  ProductVariant   @relation("RelatedAddOnSales", fields: [productVariantId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  productVariantId                String           @db.ObjectId
+  selectedForVariantsAsOrderbump  ProductVariant[] @relation("Orderbumps", fields: [orderbumpProductVariantIds], references: [id])
+  orderbumpProductVariantIds      String[]         @db.ObjectId
+  selectedForVariantsAsPreupsell  ProductVariant[] @relation("Preupsell")
+  selectedForVariantsAsPostupsell ProductVariant[] @relation("Postupsell")
+}
+
+model OrderProduct {
+  id          String           @id @default(auto()) @map("_id") @db.ObjectId
+  quantity    Int              @default(1)
+  price       Int              @default(1)
+  type        OrderProductType @default(NORMAL)
+  productId   String           @db.ObjectId
+  product     ProductVariant   @relation(fields: [productId], references: [id])
+  orders      Order[]          @relation(fields: [orderIds], references: [id])
+  orderIds    String[]         @db.ObjectId
+  productName String?
+  variantName String?
+
+  @@unique([productId, quantity, price, type, productName, variantName])
+}
+
+enum OrderProductType {
+  NORMAL
+  ORDERBUMP
+  PREUPSELL
+  POSTUPSELL
+}
+
+model Order {
+  id                 String         @id @default(auto()) @map("_id") @db.ObjectId
+  type               OrderType      @default(NORMAL)
+  reference          String         @unique
+  products           OrderProduct[] @relation(fields: [productIds], references: [id])
+  productIds         String[]       @db.ObjectId
+  totalPrice         Int            @default(0) @db.Int
+  provider           String         @default("NOT_SELECTED")
+  status             Status         @default(PENDING)
+  customer           Customer       @relation(fields: [customerId], references: [id], onUpdate: Cascade)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  customerId         String         @db.ObjectId
+  ABtest             String?
+  modifiedAt         DateTime?
+  modifiedBy         String?
+  previousStatus     Status?
+  discountCode       String?
+  discountCodeAmount Int?
+  discountCodeType   DiscountType?
+}
+
+enum Status {
+  PENDING
+  IN_PAYMENT
+  COMPLETED
+  REFUNDED
+}
+
+enum OrderType {
+  NORMAL
+  REMINDER_EMAIL
+  UPSELL
+}
+
+model Customer {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  phone     String?
+  city      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
+model DiscountCode {
+  id                              String       @id @default(auto()) @map("_id") @db.ObjectId
+  code                            String       @unique
+  discountAmount                  Int
+  discountType                    DiscountType
+  validFrom                       DateTime     @default(now())
+  validUntil                      DateTime
+  isRedeemAmountLimited           Boolean
+  redeemableAmount                Int          @default(1)
+  isLimitedToSpecificProducts     Boolean
+  eligibleProducts                Product[]    @relation(fields: [productIds], references: [id])
+  productIds                      String[]     @db.ObjectId
+  isLimitedToNormalPricedVariants Boolean
+}
+
+enum DiscountType {
+  PERCENTAGE
+  CENT
+}
