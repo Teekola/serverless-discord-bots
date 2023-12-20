@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/deactivate-sunsu-memberships",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}

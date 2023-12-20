@@ -7,6 +7,11 @@ const deactivationWebhook =
   "https://checkout.kajabi.com/webhooks/offers/9Vzzdv5M8JZxpSt5/2148528871/deactivate"; // kajabi deactivation webhook url
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).end("Unauthorized");
+  }
+
+  // Daterange is yesterday from 00.00 upto yesterday 23.59.59.999
   const startDate = new Date();
   startDate.setFullYear(startDate.getFullYear() - 1);
   startDate.setDate(startDate.getDate() - 1);
@@ -14,7 +19,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const endDate = new Date(startDate);
   endDate.setHours(23, 59, 59, 999);
-  // Get date that is exactly one year and one day before current year month day date
 
   const timeRangeStr = `${startDate.toLocaleString("fi-FI", {
     year: "numeric",
