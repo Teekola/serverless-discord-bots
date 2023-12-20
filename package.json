@@ -3,12 +3,12 @@
   "license": "MIT",
   "private": false,
   "devDependencies": {
-    "@types/node": "^20.6.4",
-    "@vercel/node": "^3.0.6",
-    "typescript": "^5.2.2"
+    "@types/node": "^20.10.5",
+    "@vercel/node": "^3.0.13",
+    "typescript": "^5.3.3"
   },
   "dependencies": {
-    "discord.js": "^14.13.0",
-    "zod": "^3.22.2"
+    "discord.js": "^14.14.1",
+    "zod": "^3.22.4"
   }
 }
