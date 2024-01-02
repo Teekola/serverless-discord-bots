@@ -63,7 +63,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
     },
   });
-  const kajabiPayloads = orders.map((order) => ({
+
+  // find orders that were made after that date
+  const newerOrders = await prisma.order.findMany({
+    select: {
+      customer: {
+        select: { email: true },
+      },
+    },
+    where: {
+      createdAt: {
+        gt: endDate,
+      },
+      status: "COMPLETED",
+      productIds: {
+        hasSome: membershipIds.map((obj) => obj.id),
+      },
+    },
+  });
+  const newEmails = new Set(newerOrders.map((o) => o.customer.email));
+
+  const filteredOrders = orders.filter(
+    (order) => !newEmails.has(order.customer.email)
+  );
+
+  const kajabiPayloads = filteredOrders.map((order) => ({
     name: order.customer.firstName + " " + order.customer.lastName,
     email: order.customer.email,
     external_user_id: order.customer.email,
