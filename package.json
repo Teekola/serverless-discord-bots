@@ -4,7 +4,8 @@
   "private": false,
   "scripts": {
     "prebuild": "npm run prisma-generate",
-    "prisma-generate": "npx prisma generate"
+    "prisma-generate": "npx prisma generate",
+    "postinstall": "npm run prisma-generate"
   },
   "devDependencies": {
     "@types/node": "^20.10.5",
