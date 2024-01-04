@@ -14,7 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Daterange is yesterday from 00.00 upto yesterday 23.59.59.999
   const startDate = new Date();
   startDate.setFullYear(startDate.getFullYear() - 1);
-  startDate.setDate(startDate.getDate() - 2);
+  startDate.setDate(startDate.getDate() - 1);
   startDate.setHours(0, 0, 0, 0);
 
   const endDate = new Date(startDate);
