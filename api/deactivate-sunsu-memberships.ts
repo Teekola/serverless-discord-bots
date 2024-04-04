@@ -1,6 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { discordClient } from "../lib/discord";
+import { Client, GatewayIntentBits } from "discord.js";
 import { prisma } from "../prisma/prisma";
+
+const discordClient = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+});
 
 const membershipId = "63989b8bb528e0e359c1515c"; // sunsu yearly membership productId
 const deactivationWebhook =
@@ -151,6 +155,8 @@ ${failedDeactivationsString}`
     if (channel?.type === 0) {
       await channel.send(message);
     }
+
+    discordClient.destroy();
   });
 
   // Triggering login causes the message the be sent

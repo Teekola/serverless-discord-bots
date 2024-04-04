@@ -1,6 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { discordClient } from "../lib/discord";
+import { Client, GatewayIntentBits } from "discord.js";
 import * as z from "zod";
+
+const discordClient = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+});
 
 export const dateFormatter = new Intl.DateTimeFormat("fi-FI", {
   day: "2-digit",
@@ -66,6 +70,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (channel?.type === 0) {
         await channel.send(message);
       }
+
+      discordClient.destroy();
     });
 
     // Triggering login causes the message the be sent
